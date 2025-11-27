@@ -1,0 +1,32 @@
+#
+# This workflow calls the main distribution pipeline from DuckDB to build, test and (optionally) release the extension
+#
+name: Main Extension Distribution Pipeline
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-${{ github.head_ref || '' }}-${{ github.base_ref || '' }}-${{ github.ref != 'refs/heads/main' && github.sha || '' }}
+  cancel-in-progress: true
+
+jobs:
+  duckdb-stable-build:
+    name: Build extension binaries
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.4.2
+    with:
+      duckdb_version: v1.4.2
+      ci_tools_version: v1.4.2
+      extension_name: ch_duckdb
+      # Limit distribution to linux_amd64 only
+      exclude_archs: linux_arm64;linux_amd64_musl;osx_amd64;osx_arm64;windows_amd64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads
+
+  code-quality-check:
+    name: Code Quality Check
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v1.4.2
+    with:
+      duckdb_version: v1.4.2
+      ci_tools_version: v1.4.2
+      extension_name: ch_duckdb
+      format_checks: 'format;tidy'
