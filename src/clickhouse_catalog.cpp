@@ -9,13 +9,44 @@
 #include "duckdb/parser/parsed_data/attach_info.hpp"
 #include "clickhouse_connection.hpp"
 #include "duckdb/transaction/transaction.hpp"
+#include "duckdb/logging/logger.hpp"
 
 #include <clickhouse/client.h>
 #include <clickhouse/exceptions.h>
-#include <iostream>
 #include <sstream>
+#include <cstdarg>
+#include <cstdio>
+#include <cstring>
 
 namespace duckdb {
+
+namespace {
+
+static bool
+DebugEnabled() {
+	static bool cached = false;
+	static bool initialized = false;
+	if (!initialized) {
+		const char *env = std::getenv("CH_DUCKDB_DEBUG");
+		cached = env && std::strlen(env) > 0;
+		initialized = true;
+	}
+	return cached;
+}
+
+static void
+DebugPrint(const char *fmt, ...) {
+	if (!DebugEnabled()) {
+		return;
+	}
+	va_list args;
+	va_start(args, fmt);
+	std::vfprintf(stderr, fmt, args);
+	std::fprintf(stderr, "\n");
+	va_end(args);
+}
+
+} // namespace
 
 ClickhouseCatalog::ClickhouseCatalog(AttachedDatabase &db, const string &connection_string_p,
                                      unordered_map<string, Value> options_map, ClickhouseConnectionConfig config_p)
@@ -130,7 +161,7 @@ Redacted(const ClickhouseConnectionConfig &cfg) {
 }
 
 static void
-VerifyConnection(const ClickhouseConnectionConfig &cfg) {
+VerifyConnection(const ClickhouseConnectionConfig &cfg, AttachedDatabase &db) {
 	clickhouse::ClientOptions client_opts;
 	client_opts.SetHost(cfg.host)
 	    .SetPort(cfg.port)
@@ -145,10 +176,10 @@ VerifyConnection(const ClickhouseConnectionConfig &cfg) {
 		client_opts.SetSSLOptions(ssl_opts);
 	}
 
-	std::cerr << "[clickhouse] attempting connection: " << Redacted(cfg) << std::endl;
+	DebugPrint("[clickhouse] attempting connection: %s", Redacted(cfg).c_str());
 	clickhouse::Client client(client_opts);
 	client.Ping();
-	std::cerr << "[clickhouse] connection verified" << std::endl;
+	DebugPrint("[clickhouse] connection verified");
 }
 
 } // namespace
@@ -158,12 +189,12 @@ ClickhouseCatalog::Attach(optional_ptr<StorageExtensionInfo>, ClientContext &, A
                           const string &, AttachInfo &info, AttachOptions &) {
 	auto config = BuildConfig(info.path, info.options);
 	try {
-		VerifyConnection(config);
+		VerifyConnection(config, db);
 	} catch (const clickhouse::ServerException &ex) {
-		std::cerr << "[clickhouse] server error: " << ex.what() << std::endl;
+		DebugPrint("[clickhouse] server error: %s", ex.what());
 		throw;
 	} catch (const std::exception &ex) {
-		std::cerr << "[clickhouse] connection failed: " << ex.what() << std::endl;
+		DebugPrint("[clickhouse] connection failed: %s", ex.what());
 		throw;
 	}
 	return make_uniq<ClickhouseCatalog>(db, info.path, std::move(info.options), std::move(config));

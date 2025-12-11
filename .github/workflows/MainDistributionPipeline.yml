@@ -19,8 +19,7 @@ jobs:
       duckdb_version: v1.4.2
       ci_tools_version: v1.4.2
       extension_name: ch_duckdb
-      # Limit distribution to linux_amd64 only
-      exclude_archs: linux_arm64;linux_amd64_musl;osx_amd64;osx_arm64;windows_amd64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads
+      exclude_archs: linux_arm64;linux_amd64_musl;osx_amd64;windows_amd64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads
 
   code-quality-check:
     name: Code Quality Check
