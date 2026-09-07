@@ -380,14 +380,14 @@ ClickhouseQueryInitGlobal(ClientContext &context, TableFunctionInitInput &input)
 
 static int64_t
 DateTime64ToMicros(int64_t raw, size_t precision) {
-	int64_t scale = 1;
-	for (size_t i = 0; i < precision; i++) {
-		scale *= 10;
+	// Convert directly between the declared precision and microseconds to avoid overflow.
+	for (size_t i = precision; i < 6; i++) {
+		raw *= 10;
 	}
-	if (scale == 0) {
-		return 0;
+	for (size_t i = 6; i < precision; i++) {
+		raw /= 10;
 	}
-	return (raw * 1000000) / scale;
+	return raw;
 }
 
 static void CopyFromItemView(const clickhouse::ItemView &item, const clickhouse::TypeRef &type, Vector &target,
@@ -579,8 +579,8 @@ static void CopyValue(const clickhouse::ColumnRef &col, const clickhouse::TypeRe
 	case clickhouse::Type::UUID: {
 		auto uuid_col = col->AsStrict<clickhouse::ColumnUUID>();
 		auto uuid_val = uuid_col->At(row);
-		uint64_t low = uuid_val.first;
-		uint64_t high = uuid_val.second;
+		uint64_t high = uuid_val.first;
+		uint64_t low = uuid_val.second;
 		uhugeint_t combined;
 		combined.lower = low;
 		combined.upper = high;
@@ -608,12 +608,12 @@ static void CopyValue(const clickhouse::ColumnRef &col, const clickhouse::TypeRe
 		return;
 	}
 	case clickhouse::Type::Date: {
-		auto days = col->AsStrict<clickhouse::ColumnDate>()->At(row);
+		auto days = col->AsStrict<clickhouse::ColumnDate>()->RawAt(row);
 		FlatVector::GetData<date_t>(target)[out_idx] = date_t(int32_t(days));
 		return;
 	}
 	case clickhouse::Type::Date32: {
-		auto days = col->AsStrict<clickhouse::ColumnDate32>()->At(row);
+		auto days = col->AsStrict<clickhouse::ColumnDate32>()->RawAt(row);
 		FlatVector::GetData<date_t>(target)[out_idx] = date_t(int32_t(days));
 		return;
 	}

@@ -1,0 +1,27 @@
+name: ch-duckdb-test
+
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:26.3.32.14
+    ports:
+      - "127.0.0.1:${CH_TEST_PORT:-19000}:9000"
+      - "127.0.0.1:18123:8123"
+    environment:
+      CLICKHOUSE_DB: ch_duckdb_test
+      CLICKHOUSE_USER: ch_duckdb_test
+      CLICKHOUSE_PASSWORD: test_password
+    volumes:
+      - ./test/clickhouse/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    tmpfs:
+      - /var/lib/clickhouse
+      - /var/log/clickhouse-server
+    healthcheck:
+      test: ["CMD", "clickhouse-client", "--user", "ch_duckdb_test", "--password", "test_password", "--query", "SELECT throwIf(count() != 2) FROM ch_duckdb_test.sample"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144

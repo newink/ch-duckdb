@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.12)
 
 # Set extension name here
 set(TARGET_NAME ch_duckdb)
@@ -31,6 +31,7 @@ set(EXTENSION_SOURCES
 set(CLICKHOUSE_CPP_DIR ${CMAKE_CURRENT_SOURCE_DIR}/third_party/clickhouse-cpp)
 set(BUILD_TESTS OFF CACHE BOOL "Disable clickhouse-cpp tests" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "Disable clickhouse-cpp examples" FORCE)
+set(WITH_OPENSSL ON CACHE BOOL "Enable ClickHouse TLS connections" FORCE)
 add_subdirectory(${CLICKHOUSE_CPP_DIR} EXCLUDE_FROM_ALL)
 
 # DuckDB namespaces its bundled zstd symbols as duckdb_zstd; include an alias header so clickhouse-cpp can resolve unqualified ZSTD_* calls.
