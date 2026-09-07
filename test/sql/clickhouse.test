@@ -1,6 +1,6 @@
 # name: test/sql/clickhouse.test
 # description: Read real ClickHouse data through scan and an attached catalog
-# group: [ch_duckdb]
+# group: [sql]
 
 require-env CH_TEST_ENABLED 1
 

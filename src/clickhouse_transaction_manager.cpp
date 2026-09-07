@@ -12,8 +12,7 @@ ClickhouseTransactionManager::ClickhouseTransactionManager(AttachedDatabase &db_
 ClickhouseTransactionManager::~ClickhouseTransactionManager() {
 }
 
-Transaction &
-ClickhouseTransactionManager::StartTransaction(ClientContext &context) {
+Transaction &ClickhouseTransactionManager::StartTransaction(ClientContext &context) {
 	auto transaction = make_uniq<ClickhouseTransaction>(*this, context);
 	auto &result = *transaction;
 	lock_guard<mutex> l(transaction_lock);
@@ -21,21 +20,18 @@ ClickhouseTransactionManager::StartTransaction(ClientContext &context) {
 	return result;
 }
 
-ErrorData
-ClickhouseTransactionManager::CommitTransaction(ClientContext &, Transaction &transaction) {
+ErrorData ClickhouseTransactionManager::CommitTransaction(ClientContext &, Transaction &transaction) {
 	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(&transaction);
 	return ErrorData();
 }
 
-void
-ClickhouseTransactionManager::RollbackTransaction(Transaction &transaction) {
+void ClickhouseTransactionManager::RollbackTransaction(Transaction &transaction) {
 	lock_guard<mutex> l(transaction_lock);
 	transactions.erase(&transaction);
 }
 
-void
-ClickhouseTransactionManager::Checkpoint(ClientContext &, bool) {
+void ClickhouseTransactionManager::Checkpoint(ClientContext &, bool) {
 	// ClickHouse connections are remote; checkpointing is a no-op for now.
 }
 

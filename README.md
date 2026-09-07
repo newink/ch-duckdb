@@ -104,11 +104,12 @@ Build the test runner and local extension repository, then start ClickHouse and 
 ```sh
 cmake --build build/duckdb-1.5.5 \
   --target ch_duckdb_loadable_extension shell unittest duckdb_local_extension_repo --parallel 8
-make test-clickhouse
+TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse
 make clickhouse-down
 ```
 
-Use `TEST_BUILD_DIR=build/release make test-clickhouse` for a release build.
+`make test-clickhouse` uses the standard `build/release` directory.
+For the separate build above, run `TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse`.
 The test target does not rebuild. See [test/README.md](test/README.md) for connection settings and coverage.
 
 ## Contributing

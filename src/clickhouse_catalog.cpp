@@ -22,8 +22,7 @@ namespace duckdb {
 
 namespace {
 
-static bool
-DebugEnabled() {
+static bool DebugEnabled() {
 	static bool cached = false;
 	static bool initialized = false;
 	if (!initialized) {
@@ -34,8 +33,7 @@ DebugEnabled() {
 	return cached;
 }
 
-static void
-DebugPrint(const char *fmt, ...) {
+static void DebugPrint(const char *fmt, ...) {
 	if (!DebugEnabled()) {
 		return;
 	}
@@ -50,13 +48,13 @@ DebugPrint(const char *fmt, ...) {
 
 ClickhouseCatalog::ClickhouseCatalog(AttachedDatabase &db, const string &connection_string_p,
                                      unordered_map<string, Value> options_map, ClickhouseConnectionConfig config_p)
-    : Catalog(db), connection_string(connection_string_p), options(std::move(options_map)), config(std::move(config_p)) {
+    : Catalog(db), connection_string(connection_string_p), options(std::move(options_map)),
+      config(std::move(config_p)) {
 }
 
 namespace {
 
-static const Value *
-FindOption(const unordered_map<string, Value> &opts, const string &key) {
+static const Value *FindOption(const unordered_map<string, Value> &opts, const string &key) {
 	auto lower_key = StringUtil::Lower(key);
 	for (auto &entry : opts) {
 		if (StringUtil::Lower(entry.first) == lower_key) {
@@ -72,8 +70,7 @@ static void ApplyStringOption(const unordered_map<string, Value> &opts, const st
 	}
 }
 
-static void
-ApplyBoolOption(const unordered_map<string, Value> &opts, const string &key, bool &target) {
+static void ApplyBoolOption(const unordered_map<string, Value> &opts, const string &key, bool &target) {
 	if (auto val = FindOption(opts, key)) {
 		target = BooleanValue::Get(*val);
 	}
@@ -90,8 +87,7 @@ static void ApplyPortOption(const unordered_map<string, Value> &opts, const stri
 	}
 }
 
-static void
-ParsePath(const string &path, ClickhouseConnectionConfig &config) {
+static void ParsePath(const string &path, ClickhouseConnectionConfig &config) {
 	if (path.empty()) {
 		return;
 	}
@@ -127,8 +123,7 @@ ParsePath(const string &path, ClickhouseConnectionConfig &config) {
 	}
 }
 
-static ClickhouseConnectionConfig
-BuildConfig(const string &path, const unordered_map<string, Value> &opts) {
+static ClickhouseConnectionConfig BuildConfig(const string &path, const unordered_map<string, Value> &opts) {
 	ClickhouseConnectionConfig config;
 	ParsePath(path, config);
 
@@ -147,8 +142,7 @@ BuildConfig(const string &path, const unordered_map<string, Value> &opts) {
 	return config;
 }
 
-static std::string
-Redacted(const ClickhouseConnectionConfig &cfg) {
+static std::string Redacted(const ClickhouseConnectionConfig &cfg) {
 	std::ostringstream oss;
 	oss << "host=" << cfg.host << " port=" << cfg.port << " db=" << cfg.database << " user=" << cfg.user;
 	if (!cfg.password.empty()) {
@@ -160,8 +154,7 @@ Redacted(const ClickhouseConnectionConfig &cfg) {
 	return oss.str();
 }
 
-static void
-VerifyConnection(const ClickhouseConnectionConfig &cfg, AttachedDatabase &db) {
+static void VerifyConnection(const ClickhouseConnectionConfig &cfg, AttachedDatabase &db) {
 	clickhouse::ClientOptions client_opts;
 	client_opts.SetHost(cfg.host)
 	    .SetPort(cfg.port)
@@ -184,9 +177,8 @@ VerifyConnection(const ClickhouseConnectionConfig &cfg, AttachedDatabase &db) {
 
 } // namespace
 
-unique_ptr<Catalog>
-ClickhouseCatalog::Attach(optional_ptr<StorageExtensionInfo>, ClientContext &, AttachedDatabase &db,
-                          const string &, AttachInfo &info, AttachOptions &) {
+unique_ptr<Catalog> ClickhouseCatalog::Attach(optional_ptr<StorageExtensionInfo>, ClientContext &, AttachedDatabase &db,
+                                              const string &, AttachInfo &info, AttachOptions &) {
 	auto config = BuildConfig(info.path, info.options);
 	try {
 		VerifyConnection(config, db);
@@ -200,24 +192,21 @@ ClickhouseCatalog::Attach(optional_ptr<StorageExtensionInfo>, ClientContext &, A
 	return make_uniq<ClickhouseCatalog>(db, info.path, std::move(info.options), std::move(config));
 }
 
-void
-ClickhouseCatalog::Initialize(bool) {
+void ClickhouseCatalog::Initialize(bool) {
 	// Defer remote discovery until objects are referenced.
 }
 
-string
-ClickhouseCatalog::GetCatalogType() {
+string ClickhouseCatalog::GetCatalogType() {
 	return "clickhouse";
 }
 
-optional_ptr<CatalogEntry>
-ClickhouseCatalog::CreateSchema(CatalogTransaction, CreateSchemaInfo &) {
+optional_ptr<CatalogEntry> ClickhouseCatalog::CreateSchema(CatalogTransaction, CreateSchemaInfo &) {
 	throw NotImplementedException("CreateSchema is not supported for ClickHouse catalogs");
 }
 
-optional_ptr<SchemaCatalogEntry>
-ClickhouseCatalog::LookupSchema(CatalogTransaction, const EntryLookupInfo &schema_lookup,
-                                OnEntryNotFound if_not_found) {
+optional_ptr<SchemaCatalogEntry> ClickhouseCatalog::LookupSchema(CatalogTransaction,
+                                                                 const EntryLookupInfo &schema_lookup,
+                                                                 OnEntryNotFound if_not_found) {
 	if (if_not_found == OnEntryNotFound::THROW_EXCEPTION) {
 		throw CatalogException("Schema \"%s\" does not exist in ClickHouse catalog \"%s\"",
 		                       schema_lookup.GetEntryName(), GetName());
@@ -225,61 +214,52 @@ ClickhouseCatalog::LookupSchema(CatalogTransaction, const EntryLookupInfo &schem
 	return nullptr;
 }
 
-void
-ClickhouseCatalog::ScanSchemas(ClientContext &, std::function<void(SchemaCatalogEntry &)>) {
+void ClickhouseCatalog::ScanSchemas(ClientContext &, std::function<void(SchemaCatalogEntry &)>) {
 	// Schema enumeration will be wired once metadata discovery is implemented.
 }
 
-PhysicalOperator &
-ClickhouseCatalog::PlanCreateTableAs(ClientContext &, PhysicalPlanGenerator &, LogicalCreateTable &,
-                                     PhysicalOperator &) {
+PhysicalOperator &ClickhouseCatalog::PlanCreateTableAs(ClientContext &, PhysicalPlanGenerator &, LogicalCreateTable &,
+                                                       PhysicalOperator &) {
 	throw NotImplementedException("CREATE TABLE AS is not supported for ClickHouse catalogs");
 }
 
-PhysicalOperator &
-ClickhouseCatalog::PlanInsert(ClientContext &, PhysicalPlanGenerator &, LogicalInsert &,
-                              optional_ptr<PhysicalOperator>) {
+PhysicalOperator &ClickhouseCatalog::PlanInsert(ClientContext &, PhysicalPlanGenerator &, LogicalInsert &,
+                                                optional_ptr<PhysicalOperator>) {
 	throw NotImplementedException("INSERT is not supported for ClickHouse catalogs");
 }
 
-PhysicalOperator &
-ClickhouseCatalog::PlanDelete(ClientContext &, PhysicalPlanGenerator &, LogicalDelete &, PhysicalOperator &) {
+PhysicalOperator &ClickhouseCatalog::PlanDelete(ClientContext &, PhysicalPlanGenerator &, LogicalDelete &,
+                                                PhysicalOperator &) {
 	throw NotImplementedException("DELETE is not supported for ClickHouse catalogs");
 }
 
-PhysicalOperator &
-ClickhouseCatalog::PlanUpdate(ClientContext &, PhysicalPlanGenerator &, LogicalUpdate &, PhysicalOperator &) {
+PhysicalOperator &ClickhouseCatalog::PlanUpdate(ClientContext &, PhysicalPlanGenerator &, LogicalUpdate &,
+                                                PhysicalOperator &) {
 	throw NotImplementedException("UPDATE is not supported for ClickHouse catalogs");
 }
 
-unique_ptr<LogicalOperator>
-ClickhouseCatalog::BindCreateIndex(Binder &, CreateStatement &, TableCatalogEntry &,
-                                   unique_ptr<LogicalOperator>) {
+unique_ptr<LogicalOperator> ClickhouseCatalog::BindCreateIndex(Binder &, CreateStatement &, TableCatalogEntry &,
+                                                               unique_ptr<LogicalOperator>) {
 	throw NotImplementedException("CREATE INDEX is not supported for ClickHouse catalogs");
 }
 
-DatabaseSize
-ClickhouseCatalog::GetDatabaseSize(ClientContext &) {
+DatabaseSize ClickhouseCatalog::GetDatabaseSize(ClientContext &) {
 	return DatabaseSize();
 }
 
-bool
-ClickhouseCatalog::InMemory() {
+bool ClickhouseCatalog::InMemory() {
 	return false;
 }
 
-string
-ClickhouseCatalog::GetDBPath() {
+string ClickhouseCatalog::GetDBPath() {
 	return connection_string;
 }
 
-void
-ClickhouseCatalog::DropSchema(ClientContext &, DropInfo &) {
+void ClickhouseCatalog::DropSchema(ClientContext &, DropInfo &) {
 	throw NotImplementedException("DROP SCHEMA is not supported for ClickHouse catalogs");
 }
 
-const ClickhouseConnectionConfig &
-ClickhouseCatalog::GetConnectionConfig() const {
+const ClickhouseConnectionConfig &ClickhouseCatalog::GetConnectionConfig() const {
 	return config;
 }
 

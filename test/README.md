@@ -3,18 +3,20 @@
 The root `compose.yaml` starts ClickHouse 26.3.32.14 for SQLLogicTests.
 Docker Compose, a built DuckDB shell, the loadable extension and the `unittest` runner are required.
 
-After configuring the build as described in the root README:
+With the standard release build:
 
 ```sh
-cmake --build build/duckdb-1.5.5 \
-  --target ch_duckdb_loadable_extension shell unittest duckdb_local_extension_repo --parallel 8
+make
 make test-clickhouse
 ```
 
-`make test-clickhouse` installs the current binary into `build/duckdb-1.5.5/test_extensions`,
+`make test-clickhouse` installs the current binary into `build/release/test_extensions`,
 starts the container, waits for the fixture data and runs `test/sql/*`. It does not rebuild.
-Set `TEST_BUILD_DIR=build/release` to use a different build.
-The container stays running after the tests.
+For a separate build, run `TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse`.
+The container stays running after local tests. The `ClickHouse integration tests` CI job builds
+with `make`, runs the same test target on Ubuntu and removes the container even if tests fail.
+The distribution workflow runs the generic SQLLogicTests separately and skips the ClickHouse
+tests unless `CH_TEST_ENABLED=1` is set.
 
 ```sh
 make clickhouse-up

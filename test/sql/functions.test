@@ -1,6 +1,6 @@
 # name: test/sql/functions.test
 # description: Function registration and validation without a ClickHouse server
-# group: [ch_duckdb]
+# group: [sql]
 
 require ch_duckdb
 
