@@ -1,0 +1,29 @@
+# name: test/sql/functions.test
+# description: Function registration and validation without a ClickHouse server
+# group: [sql]
+
+require ch_duckdb
+
+query I
+SELECT count(*) FROM duckdb_functions()
+WHERE function_name IN ('clickhouse_scan', 'clickhouse_query');
+----
+2
+
+statement error
+SELECT * FROM clickhouse_query('missing_clickhouse', 'SELECT 1');
+----
+unknown attached database alias
+
+statement ok
+ATTACH ':memory:' AS local_db;
+
+statement error
+SELECT * FROM clickhouse_query('local_db', 'SELECT 1');
+----
+is not a ClickHouse catalog
+
+statement error
+SELECT * FROM clickhouse_scan('SELECT 1', '127.0.0.1', 65536, NULL, NULL, NULL, false);
+----
+exceeds uint16_t range

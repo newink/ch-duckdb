@@ -37,8 +37,7 @@ namespace duckdb {
 
 namespace {
 
-static bool
-DebugEnabled() {
+static bool DebugEnabled() {
 	static bool cached = false;
 	static bool initialized = false;
 	if (!initialized) {
@@ -49,8 +48,7 @@ DebugEnabled() {
 	return cached;
 }
 
-static void
-DebugPrint(const char *fmt, ...) {
+static void DebugPrint(const char *fmt, ...) {
 	if (!DebugEnabled()) {
 		return;
 	}
@@ -61,8 +59,7 @@ DebugPrint(const char *fmt, ...) {
 	va_end(args);
 }
 
-static string
-HexPreview(std::string_view sv, idx_t max_bytes = 32) {
+static string HexPreview(std::string_view sv, idx_t max_bytes = 32) {
 	static const char hex_digits[] = "0123456789ABCDEF";
 	string out;
 	out.reserve(sv.size() * 2);
@@ -99,8 +96,7 @@ struct ClickhouseQueryGlobalState : public GlobalTableFunctionState {
 	idx_t row_idx;
 };
 
-static string
-Redacted(const ClickhouseConnectionConfig &config) {
+static string Redacted(const ClickhouseConnectionConfig &config) {
 	std::ostringstream oss;
 	oss << "host=" << config.host << " port=" << config.port << " db=" << config.database << " user=" << config.user;
 	if (!config.password.empty()) {
@@ -112,8 +108,7 @@ Redacted(const ClickhouseConnectionConfig &config) {
 	return oss.str();
 }
 
-static clickhouse::ClientOptions
-BuildClientOptions(const ClickhouseConnectionConfig &config) {
+static clickhouse::ClientOptions BuildClientOptions(const ClickhouseConnectionConfig &config) {
 	clickhouse::ClientOptions opts;
 	opts.SetHost(config.host)
 	    .SetPort(config.port)
@@ -131,15 +126,14 @@ BuildClientOptions(const ClickhouseConnectionConfig &config) {
 	return opts;
 }
 
-static inline size_t
-GetActualStringLength(std::string_view sv) {
+static inline size_t GetActualStringLength(std::string_view sv) {
 	// Find the first null byte
 	size_t null_pos = sv.find('\0');
 	size_t max_len = (null_pos == std::string_view::npos) ? sv.size() : null_pos;
 
 	// Validate UTF-8 and truncate at first invalid byte
 	size_t valid_len = 0;
-	for (size_t i = 0; i < max_len; ) {
+	for (size_t i = 0; i < max_len;) {
 		unsigned char c = sv[i];
 		size_t char_len;
 
@@ -182,8 +176,7 @@ GetActualStringLength(std::string_view sv) {
 	return valid_len;
 }
 
-static LogicalType
-MapClickhouseType(const clickhouse::TypeRef &type) {
+static LogicalType MapClickhouseType(const clickhouse::TypeRef &type) {
 	switch (type->GetCode()) {
 	case clickhouse::Type::Nullable:
 		return MapClickhouseType(type->As<clickhouse::NullableType>()->GetNestedType());
@@ -239,8 +232,7 @@ MapClickhouseType(const clickhouse::TypeRef &type) {
 	}
 }
 
-static vector<clickhouse::Block>
-ExecuteQuery(const ClickhouseFunctionBindData &bind_data, ClientContext &context) {
+static vector<clickhouse::Block> ExecuteQuery(const ClickhouseFunctionBindData &bind_data, ClientContext &context) {
 	auto opts = BuildClientOptions(bind_data.config);
 	DebugPrint("[%s] connecting: %s", bind_data.function_name.c_str(), Redacted(bind_data.config).c_str());
 	clickhouse::Client client(opts);
@@ -269,8 +261,8 @@ ExecuteQuery(const ClickhouseFunctionBindData &bind_data, ClientContext &context
 	return blocks;
 }
 
-static void
-DiscoverSchema(ClickhouseFunctionBindData &bind_data, vector<LogicalType> &return_types, vector<string> &names, ClientContext &context) {
+static void DiscoverSchema(ClickhouseFunctionBindData &bind_data, vector<LogicalType> &return_types,
+                           vector<string> &names, ClientContext &context) {
 	auto opts = BuildClientOptions(bind_data.config);
 	DebugPrint("[%s] schema probe connect: %s", bind_data.function_name.c_str(), Redacted(bind_data.config).c_str());
 	clickhouse::Client client(opts);
@@ -294,8 +286,7 @@ DiscoverSchema(ClickhouseFunctionBindData &bind_data, vector<LogicalType> &retur
 	}
 }
 
-static ClickhouseConnectionConfig
-BuildConfigFromInputs(TableFunctionBindInput &input) {
+static ClickhouseConnectionConfig BuildConfigFromInputs(TableFunctionBindInput &input) {
 	ClickhouseConnectionConfig config;
 	config.host = input.inputs[1].ToString();
 
@@ -321,8 +312,7 @@ BuildConfigFromInputs(TableFunctionBindInput &input) {
 	return config;
 }
 
-static ClickhouseConnectionConfig
-LookupConfigFromAlias(ClientContext &context, const string &alias) {
+static ClickhouseConnectionConfig LookupConfigFromAlias(ClientContext &context, const string &alias) {
 	auto attached = DatabaseManager::Get(context).GetDatabase(context, alias);
 	if (!attached) {
 		throw BinderException("clickhouse_query: unknown attached database alias \"%s\"", alias.c_str());
@@ -338,9 +328,8 @@ LookupConfigFromAlias(ClientContext &context, const string &alias) {
 	return ch_catalog->GetConnectionConfig();
 }
 
-static unique_ptr<FunctionData>
-ClickhouseQueryBind(ClientContext &context, TableFunctionBindInput &input, vector<LogicalType> &return_types,
-                    vector<string> &names) {
+static unique_ptr<FunctionData> ClickhouseQueryBind(ClientContext &context, TableFunctionBindInput &input,
+                                                    vector<LogicalType> &return_types, vector<string> &names) {
 	if (input.inputs.size() < 2) {
 		throw BinderException("clickhouse_scan requires at least query and host arguments");
 	}
@@ -354,9 +343,8 @@ ClickhouseQueryBind(ClientContext &context, TableFunctionBindInput &input, vecto
 	return std::move(bind_data);
 }
 
-static unique_ptr<FunctionData>
-ClickhouseScanBind(ClientContext &context, TableFunctionBindInput &input, vector<LogicalType> &return_types,
-                   vector<string> &names) {
+static unique_ptr<FunctionData> ClickhouseScanBind(ClientContext &context, TableFunctionBindInput &input,
+                                                   vector<LogicalType> &return_types, vector<string> &names) {
 	if (input.inputs.size() < 2) {
 		throw BinderException("clickhouse_query requires alias and query arguments");
 	}
@@ -371,23 +359,22 @@ ClickhouseScanBind(ClientContext &context, TableFunctionBindInput &input, vector
 	return std::move(bind_data);
 }
 
-static unique_ptr<GlobalTableFunctionState>
-ClickhouseQueryInitGlobal(ClientContext &context, TableFunctionInitInput &input) {
+static unique_ptr<GlobalTableFunctionState> ClickhouseQueryInitGlobal(ClientContext &context,
+                                                                      TableFunctionInitInput &input) {
 	auto &bind_data = input.bind_data->Cast<ClickhouseFunctionBindData>();
 	auto blocks = ExecuteQuery(bind_data, context);
 	return make_uniq<ClickhouseQueryGlobalState>(std::move(blocks));
 }
 
-static int64_t
-DateTime64ToMicros(int64_t raw, size_t precision) {
-	int64_t scale = 1;
-	for (size_t i = 0; i < precision; i++) {
-		scale *= 10;
+static int64_t DateTime64ToMicros(int64_t raw, size_t precision) {
+	// Convert directly between the declared precision and microseconds to avoid overflow.
+	for (size_t i = precision; i < 6; i++) {
+		raw *= 10;
 	}
-	if (scale == 0) {
-		return 0;
+	for (size_t i = 6; i < precision; i++) {
+		raw /= 10;
 	}
-	return (raw * 1000000) / scale;
+	return raw;
 }
 
 static void CopyFromItemView(const clickhouse::ItemView &item, const clickhouse::TypeRef &type, Vector &target,
@@ -579,8 +566,8 @@ static void CopyValue(const clickhouse::ColumnRef &col, const clickhouse::TypeRe
 	case clickhouse::Type::UUID: {
 		auto uuid_col = col->AsStrict<clickhouse::ColumnUUID>();
 		auto uuid_val = uuid_col->At(row);
-		uint64_t low = uuid_val.first;
-		uint64_t high = uuid_val.second;
+		uint64_t high = uuid_val.first;
+		uint64_t low = uuid_val.second;
 		uhugeint_t combined;
 		combined.lower = low;
 		combined.upper = high;
@@ -608,12 +595,12 @@ static void CopyValue(const clickhouse::ColumnRef &col, const clickhouse::TypeRe
 		return;
 	}
 	case clickhouse::Type::Date: {
-		auto days = col->AsStrict<clickhouse::ColumnDate>()->At(row);
+		auto days = col->AsStrict<clickhouse::ColumnDate>()->RawAt(row);
 		FlatVector::GetData<date_t>(target)[out_idx] = date_t(int32_t(days));
 		return;
 	}
 	case clickhouse::Type::Date32: {
-		auto days = col->AsStrict<clickhouse::ColumnDate32>()->At(row);
+		auto days = col->AsStrict<clickhouse::ColumnDate32>()->RawAt(row);
 		FlatVector::GetData<date_t>(target)[out_idx] = date_t(int32_t(days));
 		return;
 	}
@@ -645,8 +632,7 @@ static void CopyValue(const clickhouse::ColumnRef &col, const clickhouse::TypeRe
 	}
 }
 
-static void
-ClickhouseQueryExecute(ClientContext &, TableFunctionInput &input, DataChunk &output) {
+static void ClickhouseQueryExecute(ClientContext &, TableFunctionInput &input, DataChunk &output) {
 	auto &global_state = input.global_state->Cast<ClickhouseQueryGlobalState>();
 	auto &bind_data = input.bind_data->Cast<ClickhouseFunctionBindData>();
 	idx_t out_offset = 0;
@@ -655,12 +641,11 @@ ClickhouseQueryExecute(ClientContext &, TableFunctionInput &input, DataChunk &ou
 		auto &block = global_state.blocks[global_state.block_idx];
 		auto rows_in_block = static_cast<idx_t>(block.GetRowCount());
 		if (DebugEnabled()) {
-			DebugPrint("[execute] block_idx=%llu rows=%llu cols=%llu row_idx=%llu out_offset=%llu",
-			           static_cast<unsigned long long>(global_state.block_idx),
-			           static_cast<unsigned long long>(rows_in_block),
-			           static_cast<unsigned long long>(block.GetColumnCount()),
-			           static_cast<unsigned long long>(global_state.row_idx),
-			           static_cast<unsigned long long>(out_offset));
+			DebugPrint(
+			    "[execute] block_idx=%llu rows=%llu cols=%llu row_idx=%llu out_offset=%llu",
+			    static_cast<unsigned long long>(global_state.block_idx), static_cast<unsigned long long>(rows_in_block),
+			    static_cast<unsigned long long>(block.GetColumnCount()),
+			    static_cast<unsigned long long>(global_state.row_idx), static_cast<unsigned long long>(out_offset));
 		}
 		if (rows_in_block == 0) {
 			global_state.block_idx++;
@@ -697,8 +682,7 @@ ClickhouseQueryExecute(ClientContext &, TableFunctionInput &input, DataChunk &ou
 
 } // namespace
 
-TableFunction
-ClickhouseQueryFunction::GetFunction() {
+TableFunction ClickhouseQueryFunction::GetFunction() {
 	// clickhouse_scan(query, host, port, user, password, database, secure)
 	TableFunction fun("clickhouse_scan",
 	                  {LogicalType::VARCHAR, LogicalType::VARCHAR, LogicalType::INTEGER, LogicalType::VARCHAR,
@@ -708,8 +692,7 @@ ClickhouseQueryFunction::GetFunction() {
 	return fun;
 }
 
-TableFunction
-ClickhouseScanFunction::GetFunction() {
+TableFunction ClickhouseScanFunction::GetFunction() {
 	// clickhouse_query(alias, query)
 	TableFunction fun("clickhouse_query", {LogicalType::VARCHAR, LogicalType::VARCHAR}, ClickhouseQueryExecute,
 	                  ClickhouseScanBind, ClickhouseQueryInitGlobal);

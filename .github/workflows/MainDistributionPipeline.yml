@@ -12,20 +12,45 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  clickhouse-integration:
+    name: ClickHouse integration tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      GEN: ninja
+      CMAKE_BUILD_PARALLEL_LEVEL: 2
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+      - name: Install build dependencies
+        run: sudo apt-get update -qq && sudo apt-get install -y ninja-build libssl-dev
+      - name: Build extension and test runner
+        run: make
+      - name: Run ClickHouse tests
+        run: make test-clickhouse
+      - name: Print ClickHouse logs on failure
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Remove test container
+        if: always()
+        run: docker compose down
+
   duckdb-stable-build:
     name: Build extension binaries
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.4.2
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_distribution.yml@v1.5.5
     with:
-      duckdb_version: v1.4.2
-      ci_tools_version: v1.4.2
+      duckdb_version: v1.5.5
+      ci_tools_version: v1.5.5
       extension_name: ch_duckdb
       exclude_archs: linux_arm64;linux_amd64_musl;osx_amd64;windows_amd64;windows_amd64_mingw;wasm_mvp;wasm_eh;wasm_threads
 
   code-quality-check:
     name: Code Quality Check
-    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v1.4.2
+    uses: duckdb/extension-ci-tools/.github/workflows/_extension_code_quality.yml@v1.5.5
     with:
-      duckdb_version: v1.4.2
-      ci_tools_version: v1.4.2
+      duckdb_version: v1.5.5
+      ci_tools_version: v1.5.5
       extension_name: ch_duckdb
       format_checks: 'format;tidy'

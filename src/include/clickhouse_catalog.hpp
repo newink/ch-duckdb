@@ -26,8 +26,7 @@ public:
 	optional_ptr<SchemaCatalogEntry> LookupSchema(CatalogTransaction catalog_transaction,
 	                                              const EntryLookupInfo &schema_lookup,
 	                                              OnEntryNotFound if_not_found) override;
-	void ScanSchemas(ClientContext &context,
-	                 std::function<void(SchemaCatalogEntry &)> callback) override;
+	void ScanSchemas(ClientContext &context, std::function<void(SchemaCatalogEntry &)> callback) override;
 
 	PhysicalOperator &PlanCreateTableAs(ClientContext &context, PhysicalPlanGenerator &generator,
 	                                    LogicalCreateTable &op, PhysicalOperator &plan) override;

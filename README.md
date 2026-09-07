@@ -8,10 +8,10 @@ DuckDB extension that connects to ClickHouse using the native client. It provide
 The current surface is read-only: DDL/DML against ClickHouse (CREATE/INSERT/UPDATE/DELETE) are not implemented yet.
 
 ## Requirements
-- DuckDB source as a submodule (`git submodule update --init --recursive`).
-- CMake 3.5+ and a C++17 compiler.
+- DuckDB 1.5.5 source as a submodule (`git submodule update --init --recursive`).
+- CMake 3.12+ and a C++17 compiler.
 - OpenSSL available to satisfy the ClickHouse client dependency (via system packages or vcpkg).
-- `clickhouse-cpp` is vendored in `third_party/`.
+- `clickhouse-cpp` 2.6.2 is pinned in `third_party/`. The build enables TLS support.
 
 ## Building
 ```sh
@@ -24,11 +24,30 @@ make
 ```
 
 Outputs:
-- `./build/release/duckdb` DuckDB shell with the extension linked.
+- `./build/release/duckdb` DuckDB shell. Load the extension explicitly as shown below.
 - `./build/release/extension/ch_duckdb/ch_duckdb.duckdb_extension` loadable extension binary.
 
+For an existing checkout with a DuckDB 1.4.2 build, use a separate build directory.
+On macOS arm64 with Homebrew OpenSSL:
+
+```sh
+cmake -G Ninja -S duckdb -B build/duckdb-1.5.5 \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_STANDARD=17 \
+  -DEXTENSION_STATIC_BUILD=1 \
+  -DDUCKDB_EXTENSION_CONFIGS="$PWD/extension_config.cmake" \
+  -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
+  -DUNITTEST_ROOT_DIRECTORY="$PWD" \
+  -DENABLE_UNITTEST_CPP_TESTS=FALSE
+cmake --build build/duckdb-1.5.5 \
+  --target ch_duckdb_loadable_extension shell --parallel 8
+./build/duckdb-1.5.5/duckdb -unsigned
+```
+
+Then load `build/duckdb-1.5.5/extension/ch_duckdb/ch_duckdb.duckdb_extension`.
+
 ## Usage
-Load the extension (from the build tree or an installed copy):
+Start DuckDB with `-unsigned` for a local unsigned build, then load the extension:
 ```sql
 LOAD 'build/release/extension/ch_duckdb/ch_duckdb.duckdb_extension';
 -- or, when distributed: LOAD ch_duckdb;
@@ -79,12 +98,19 @@ catalog name and fails with a descriptive error if the alias is unknown or not a
 - Unimplemented operations (DDL/DML) currently raise `NotImplementedException`.
 
 ## Testing
-SQLLogic tests will live under `test/sql/` (none are checked in yet). Run with:
+SQLLogicTests in `test/sql/` cover validation and queries against a local ClickHouse.
+Build the test runner and local extension repository, then start ClickHouse and run the tests:
+
 ```sh
-make test       # release
-# or
-make test_debug # debug
+cmake --build build/duckdb-1.5.5 \
+  --target ch_duckdb_loadable_extension shell unittest duckdb_local_extension_repo --parallel 8
+TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse
+make clickhouse-down
 ```
+
+`make test-clickhouse` uses the standard `build/release` directory.
+For the separate build above, run `TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse`.
+The test target does not rebuild. See [test/README.md](test/README.md) for connection settings and coverage.
 
 ## Contributing
 1. Open an issue describing the change (bug, feature, or docs).

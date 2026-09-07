@@ -14,8 +14,8 @@ static void LoadInternal(ExtensionLoader &loader) {
 	// Register ClickHouse storage extension so ATTACH ... TYPE clickhouse is available
 	auto &db = loader.GetDatabaseInstance();
 	auto &config = DBConfig::GetConfig(db);
-	if (config.storage_extensions.find("clickhouse") == config.storage_extensions.end()) {
-		config.storage_extensions["clickhouse"] = make_uniq<ClickhouseStorageExtension>();
+	if (!StorageExtension::Find(config, "clickhouse")) {
+		StorageExtension::Register(config, "clickhouse", make_shared_ptr<ClickhouseStorageExtension>());
 	}
 
 	// Register table functions for ad-hoc reads and attached database queries

@@ -7,8 +7,8 @@ namespace duckdb {
 
 namespace {
 
-unique_ptr<TransactionManager>
-CreateClickhouseTransactionManager(optional_ptr<StorageExtensionInfo>, AttachedDatabase &db, Catalog &catalog) {
+unique_ptr<TransactionManager> CreateClickhouseTransactionManager(optional_ptr<StorageExtensionInfo>,
+                                                                  AttachedDatabase &db, Catalog &catalog) {
 	return make_uniq<ClickhouseTransactionManager>(db, catalog);
 }
 

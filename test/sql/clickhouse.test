@@ -1,0 +1,109 @@
+# name: test/sql/clickhouse.test
+# description: Read real ClickHouse data through scan and an attached catalog
+# group: [sql]
+
+require-env CH_TEST_ENABLED 1
+
+test-env CH_TEST_PORT 19000
+
+require ch_duckdb
+
+# Direct scan, multiple string columns, Unicode, NULL, lists and dictionary strings.
+query ITTITT
+SELECT * FROM clickhouse_scan(
+    'SELECT * FROM sample ORDER BY id', '127.0.0.1', ${CH_TEST_PORT},
+    'ch_duckdb_test', 'test_password', 'ch_duckdb_test', false);
+----
+1	Привет	a description longer than twelve bytes	NULL	[1, 2, 3]	first
+2	(empty)	another description longer than twelve bytes	-7	[]	second
+
+statement ok
+ATTACH 'ch://127.0.0.1:${CH_TEST_PORT}/ch_duckdb_test' AS ch
+(TYPE clickhouse, USER 'ch_duckdb_test', PASSWORD 'test_password');
+
+query I
+SELECT count(*) FROM duckdb_databases() WHERE database_name = 'ch' AND type = 'clickhouse';
+----
+1
+
+query IT
+SELECT id, name FROM clickhouse_query('ch', 'SELECT id, name FROM sample ORDER BY id');
+----
+1	Привет
+2	(empty)
+
+# Exercise several ClickHouse blocks and DuckDB chunks, checking every string value.
+query III
+SELECT count(*), sum(n), count(*) FILTER (
+    WHERE a = 'first-long-string-' || n::VARCHAR
+      AND b = 'second-long-string-' || n::VARCHAR)
+FROM clickhouse_query('ch',
+    'SELECT number AS n, concat(''first-long-string-'', toString(number)) AS a,
+     concat(''second-long-string-'', toString(number)) AS b
+     FROM numbers(10000) SETTINGS max_block_size=333');
+----
+10000	49995000	10000
+
+# Lists and nullable values must reset correctly when DuckDB reuses output vectors.
+query III
+SELECT count(*), count(v), sum(items[2])
+FROM clickhouse_query('ch',
+    'SELECT if(number % 2 = 0, NULL, toInt32(number)) AS v,
+     [toInt32(number), toInt32(number + 1)] AS items
+     FROM numbers(10000) SETTINGS max_block_size=333');
+----
+10000	5000	50005000
+
+query TTTT
+SELECT d::VARCHAR, d32::VARCHAR, ts::VARCHAR, ts64::VARCHAR
+FROM clickhouse_query('ch',
+    'SELECT toDate(''2026-09-07'') AS d, toDate32(''1960-01-02'') AS d32,
+     toDateTime(''2026-09-07 12:34:56'', ''UTC'') AS ts,
+     toDateTime64(''2026-09-07 12:34:56.123456'', 6, ''UTC'') AS ts64');
+----
+2026-09-07	1960-01-02	2026-09-07 12:34:56	2026-09-07 12:34:56.123456
+
+query TTTT
+SELECT seconds::VARCHAR, millis::VARCHAR, nanos::VARCHAR, before_epoch::VARCHAR
+FROM clickhouse_query('ch',
+    'SELECT toDateTime64(''2026-09-07 12:34:56'', 0, ''UTC'') AS seconds,
+     toDateTime64(''2026-09-07 12:34:56.123'', 3, ''UTC'') AS millis,
+     toDateTime64(''2026-09-07 12:34:56.123456789'', 9, ''UTC'') AS nanos,
+     toDateTime64(''1960-01-02 12:34:56.123456'', 6, ''UTC'') AS before_epoch');
+----
+2026-09-07 12:34:56	2026-09-07 12:34:56.123	2026-09-07 12:34:56.123456	1960-01-02 12:34:56.123456
+
+query T
+SELECT u::VARCHAR FROM clickhouse_query('ch',
+    'SELECT toUUID(''00112233-4455-6677-8899-aabbccddeeff'') AS u');
+----
+00112233-4455-6677-8899-aabbccddeeff
+
+query TI
+SELECT t._1, t._2 FROM clickhouse_query('ch', 'SELECT tuple(''value'', toInt32(42)) AS t');
+----
+value	42
+
+query I
+SELECT count(*) FROM clickhouse_query('ch', 'SELECT id FROM sample WHERE id = 999');
+----
+0
+
+statement error
+SELECT * FROM clickhouse_query('ch', 'SELECT * FROM table_that_does_not_exist');
+----
+table_that_does_not_exist
+
+statement error
+SELECT * FROM clickhouse_scan('SELECT 1', '127.0.0.1', ${CH_TEST_PORT},
+    'ch_duckdb_test', 'wrong_password', 'ch_duckdb_test', false);
+----
+Authentication failed
+
+statement ok
+DETACH ch;
+
+statement error
+SELECT * FROM clickhouse_query('ch', 'SELECT 1');
+----
+unknown attached database alias
