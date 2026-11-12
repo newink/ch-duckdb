@@ -12,7 +12,7 @@ make test-clickhouse
 
 `make test-clickhouse` installs the current binary into `build/release/test_extensions`,
 starts the container, waits for the fixture data and runs `test/sql/*`. It does not rebuild.
-For a separate build, run `TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse`.
+For a separate build, run `TEST_BUILD_DIR=build/duckdb-1.5.6 make test-clickhouse`.
 The container stays running after local tests. The `ClickHouse integration tests` CI job builds
 with `make`, runs the same test target on Ubuntu and removes the container even if tests fail.
 The distribution workflow runs the generic SQLLogicTests separately and skips the ClickHouse

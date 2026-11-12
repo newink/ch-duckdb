@@ -8,7 +8,7 @@ DuckDB extension that connects to ClickHouse using the native client. It provide
 The current surface is read-only: DDL/DML against ClickHouse (CREATE/INSERT/UPDATE/DELETE) are not implemented yet.
 
 ## Requirements
-- DuckDB 1.5.5 source as a submodule (`git submodule update --init --recursive`).
+- DuckDB 1.5.6 source as a submodule (`git submodule update --init --recursive`).
 - CMake 3.12+ and a C++17 compiler.
 - OpenSSL available to satisfy the ClickHouse client dependency (via system packages or vcpkg).
 - `clickhouse-cpp` 2.6.2 is pinned in `third_party/`. The build enables TLS support.
@@ -31,7 +31,7 @@ For an existing checkout with a DuckDB 1.4.2 build, use a separate build directo
 On macOS arm64 with Homebrew OpenSSL:
 
 ```sh
-cmake -G Ninja -S duckdb -B build/duckdb-1.5.5 \
+cmake -G Ninja -S duckdb -B build/duckdb-1.5.6 \
   -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_CXX_STANDARD=17 \
   -DEXTENSION_STATIC_BUILD=1 \
@@ -39,12 +39,12 @@ cmake -G Ninja -S duckdb -B build/duckdb-1.5.5 \
   -DOPENSSL_ROOT_DIR="$(brew --prefix openssl@3)" \
   -DUNITTEST_ROOT_DIRECTORY="$PWD" \
   -DENABLE_UNITTEST_CPP_TESTS=FALSE
-cmake --build build/duckdb-1.5.5 \
+cmake --build build/duckdb-1.5.6 \
   --target ch_duckdb_loadable_extension shell --parallel 8
-./build/duckdb-1.5.5/duckdb -unsigned
+./build/duckdb-1.5.6/duckdb -unsigned
 ```
 
-Then load `build/duckdb-1.5.5/extension/ch_duckdb/ch_duckdb.duckdb_extension`.
+Then load `build/duckdb-1.5.6/extension/ch_duckdb/ch_duckdb.duckdb_extension`.
 
 ## Usage
 Start DuckDB with `-unsigned` for a local unsigned build, then load the extension:
@@ -102,14 +102,14 @@ SQLLogicTests in `test/sql/` cover validation and queries against a local ClickH
 Build the test runner and local extension repository, then start ClickHouse and run the tests:
 
 ```sh
-cmake --build build/duckdb-1.5.5 \
+cmake --build build/duckdb-1.5.6 \
   --target ch_duckdb_loadable_extension shell unittest duckdb_local_extension_repo --parallel 8
-TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse
+TEST_BUILD_DIR=build/duckdb-1.5.6 make test-clickhouse
 make clickhouse-down
 ```
 
 `make test-clickhouse` uses the standard `build/release` directory.
-For the separate build above, run `TEST_BUILD_DIR=build/duckdb-1.5.5 make test-clickhouse`.
+For the separate build above, run `TEST_BUILD_DIR=build/duckdb-1.5.6 make test-clickhouse`.
 The test target does not rebuild. See [test/README.md](test/README.md) for connection settings and coverage.
 
 ## Contributing
